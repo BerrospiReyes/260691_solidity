@@ -20,4 +20,7 @@ contract Intro{
         return cantidad;
     }
 
+    function obtenerSuma(uint256 primero, uint256 segundo) public pure returns(uint256){
+        return primero + segundo;
+    }
 }
