@@ -21,17 +21,27 @@ contract Grimorio260681 {
     }
 
     constructor() registrarEjecucion {
-        
     }
 
     function agregarElemento(uint256 _id, string memory _titulo, string memory _autor) public registrarEjecucion {
         require(bytes(_titulo).length > 0, "El titulo no puede estar vacio");
-
         for (uint256 i = 0; i < tomos.length; i++) {
             require(tomos[i].id != _id, "Tomo con ese ID ya existe");
         }
-
         tomos.push(Tomo(_id, _titulo, _autor, true));
+    }
+
+    function inactivarElemento(uint _posicion) public registrarEjecucion {
+        require(_posicion < tomos.length, "Posicion invalida");
+        tomos[_posicion].estado = false;
+    }
+
+    function pintarElementosActivos() public view registrarEjecucion {
+        for (uint256 i = 0; i < tomos.length; i++) {
+            if (tomos[i].estado == true) {
+                console.log("Tomo activo:", tomos[i].id, tomos[i].titulo);
+            }
+        }
     }
 
     function contarElementos() public view registrarEjecucion returns (uint256) {
