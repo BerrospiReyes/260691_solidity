@@ -12,7 +12,9 @@ contract Grimorio260681 {
         bool estado;
     }
 
-    Tomo[] public tomos;
+    mapping(uint256 => Tomo) public tomos;
+    uint256[] private ids;
+    uint256 public cantidad = 0;
 
     address public dirContrato = 0xd9145CCE52D386f254917e481eB44e9943F39138;
 
@@ -25,27 +27,28 @@ contract Grimorio260681 {
 
     function agregarElemento(uint256 _id, string memory _titulo, string memory _autor) public registrarEjecucion {
         require(bytes(_titulo).length > 0, "El titulo no puede estar vacio");
-        for (uint256 i = 0; i < tomos.length; i++) {
-            require(tomos[i].id != _id, "Tomo con ese ID ya existe");
-        }
-        tomos.push(Tomo(_id, _titulo, _autor, true));
+        require(tomos[_id].id == 0, "Tomo con ese ID ya existe");
+
+        tomos[_id] = Tomo(_id, _titulo, _autor, true);
+        ids.push(_id);
+        cantidad = cantidad + 1;
     }
 
-    function inactivarElemento(uint _posicion) public registrarEjecucion {
-        require(_posicion < tomos.length, "Posicion invalida");
-        tomos[_posicion].estado = false;
+    function inactivarElemento(uint256 _id) public registrarEjecucion {
+        require(tomos[_id].id != 0, "Tomo no encontrado");
+        tomos[_id].estado = false;
     }
 
     function pintarElementosActivos() public view registrarEjecucion {
-        for (uint256 i = 0; i < tomos.length; i++) {
-            if (tomos[i].estado == true) {
-                console.log("Tomo activo:", tomos[i].id, tomos[i].titulo);
+        for (uint256 i = 0; i < ids.length; i++) {
+            if (tomos[ids[i]].estado == true) {
+                console.log("Tomo activo:", tomos[ids[i]].id, tomos[ids[i]].titulo);
             }
         }
     }
 
     function contarElementos() public view registrarEjecucion returns (uint256) {
-        return tomos.length;
+        return cantidad;
     }
 
 }
