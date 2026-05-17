@@ -9,22 +9,32 @@ contract Grimorio260681 {
         uint256 id;
         string titulo;
         string autor;
+        bool estado;
     }
 
     Tomo[] public tomos;
 
     address public dirContrato = 0xd9145CCE52D386f254917e481eB44e9943F39138;
 
-    constructor() {
-        console.log("Ejecutado por: 260681 - HERNAN MAURICCIO GASTON BERROSPI REYES");
+    modifier registrarEjecucion() {
+        console.log("Ejecutado por: 260681 - HERNAN MAURICCIO GASTON BERROSPI REYES"); _;
     }
 
-    function agregarElemento(uint256 _id, string memory _titulo, string memory _autor) public {
-        tomos.push(Tomo(_id, _titulo, _autor));
+    constructor() registrarEjecucion {
+        
     }
 
-    function contarElementos() public view returns (uint256) {
-        console.log("Ejecutado por: 260681 - HERNAN MAURICCIO GASTON BERROSPI REYES");
+    function agregarElemento(uint256 _id, string memory _titulo, string memory _autor) public registrarEjecucion {
+        require(bytes(_titulo).length > 0, "El titulo no puede estar vacio");
+
+        for (uint256 i = 0; i < tomos.length; i++) {
+            require(tomos[i].id != _id, "Tomo con ese ID ya existe");
+        }
+
+        tomos.push(Tomo(_id, _titulo, _autor, true));
+    }
+
+    function contarElementos() public view registrarEjecucion returns (uint256) {
         return tomos.length;
     }
 
