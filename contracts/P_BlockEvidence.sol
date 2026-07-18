@@ -17,6 +17,9 @@ contract BlockEvidenceRegistro is AccessControl {
     bytes32 public constant JUDICIAL_ROLE =
         keccak256("JUDICIAL_ROLE");
 
+    bytes32 public constant ABOGADO_ROLE =
+        keccak256("ABOGADO_ROLE");
+
     uint256 public constant MAX_EVIDENCIAS = 1000;
 
     uint256 public totalEvidencias;
@@ -177,6 +180,22 @@ contract BlockEvidenceRegistro is AccessControl {
         } else {
             revert("No se puede transferir custodia en este estado");
         }
+    }
+
+    function _puedeConsultar(
+        address cuenta
+    )
+        internal
+        view
+        returns (bool)
+    {
+        return
+            hasRole(DEFAULT_ADMIN_ROLE, cuenta) ||
+            hasRole(PNP_ROLE, cuenta) ||
+            hasRole(FISCALIA_ROLE, cuenta) ||
+            hasRole(LABORATORIO_ROLE, cuenta) ||
+            hasRole(JUDICIAL_ROLE, cuenta) ||
+            hasRole(ABOGADO_ROLE, cuenta);
     }
 
     function registrarEvidencia(
@@ -360,6 +379,11 @@ contract BlockEvidenceRegistro is AccessControl {
         require(
             id > 0 && id <= MAX_EVIDENCIAS,
             "ID fuera de rango"
+        );
+
+        require(
+            _puedeConsultar(msg.sender),
+            "Debes tener rol autorizado para consultar"
         );
 
         require(
