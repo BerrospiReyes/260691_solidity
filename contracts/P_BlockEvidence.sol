@@ -5,11 +5,17 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 
 contract BlockEvidenceRegistro is AccessControl {
 
-    bytes32 public constant REGISTRADOR_ROLE =
-        keccak256("REGISTRADOR_ROLE");
+    bytes32 public constant PNP_ROLE =
+        keccak256("PNP_ROLE");
 
-    bytes32 public constant VALIDADOR_ROLE =
-        keccak256("VALIDADOR_ROLE");
+    bytes32 public constant FISCALIA_ROLE =
+        keccak256("FISCALIA_ROLE");
+
+    bytes32 public constant LABORATORIO_ROLE =
+        keccak256("LABORATORIO_ROLE");
+
+    bytes32 public constant JUDICIAL_ROLE =
+        keccak256("JUDICIAL_ROLE");
 
     uint256 public constant MAX_EVIDENCIAS = 1000;
 
@@ -67,6 +73,112 @@ contract BlockEvidenceRegistro is AccessControl {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
+    function _validarCustodioActual(
+        Evidencia storage evidencia
+    )
+        internal
+        view
+    {
+        require(
+            evidencia.custodioActual == msg.sender,
+            "Solo el custodio actual puede actualizar"
+        );
+    }
+
+    function _validarRolParaEstado(
+        Estado nuevoEstado
+    )
+        internal
+        view
+    {
+        if (nuevoEstado == Estado.Validada) {
+            require(
+                hasRole(FISCALIA_ROLE, msg.sender),
+                "Para Validada debes tener rol FISCALIA"
+            );
+        } else if (
+            nuevoEstado == Estado.EnAnalisis ||
+            nuevoEstado == Estado.Analizada
+        ) {
+            require(
+                hasRole(LABORATORIO_ROLE, msg.sender),
+                "Para analisis debes tener rol LABORATORIO"
+            );
+        } else if (
+            nuevoEstado == Estado.Presentada ||
+            nuevoEstado == Estado.Cerrada
+        ) {
+            require(
+                hasRole(JUDICIAL_ROLE, msg.sender),
+                "Para etapa judicial debes tener rol JUDICIAL"
+            );
+        } else {
+            revert("No se puede volver a Registrada");
+        }
+    }
+
+    function _validarTransicionEstado(
+        Estado estadoActual,
+        Estado nuevoEstado
+    )
+        internal
+        pure
+    {
+        bool permitida =
+            (
+                estadoActual == Estado.Registrada &&
+                nuevoEstado == Estado.Validada
+            ) ||
+            (
+                estadoActual == Estado.Validada &&
+                nuevoEstado == Estado.EnAnalisis
+            ) ||
+            (
+                estadoActual == Estado.EnAnalisis &&
+                nuevoEstado == Estado.Analizada
+            ) ||
+            (
+                estadoActual == Estado.Analizada &&
+                nuevoEstado == Estado.Presentada
+            ) ||
+            (
+                estadoActual == Estado.Presentada &&
+                nuevoEstado == Estado.Cerrada
+            );
+
+        require(
+            permitida,
+            "Transicion de estado no permitida"
+        );
+    }
+
+    function _validarNuevoCustodio(
+        Estado estadoActual,
+        address nuevoCustodio
+    )
+        internal
+        view
+    {
+        if (estadoActual == Estado.Registrada) {
+            require(
+                hasRole(FISCALIA_ROLE, nuevoCustodio),
+                "Nuevo custodio debe tener rol FISCALIA"
+            );
+        } else if (estadoActual == Estado.Validada) {
+            require(
+                hasRole(LABORATORIO_ROLE, nuevoCustodio),
+                "Nuevo custodio debe tener rol LABORATORIO"
+            );
+        } else if (estadoActual == Estado.Analizada) {
+            require(
+                hasRole(JUDICIAL_ROLE, nuevoCustodio),
+                "Nuevo custodio debe tener rol JUDICIAL"
+            );
+        } else {
+            revert("No se puede transferir custodia en este estado");
+        }
+    }
+
     function registrarEvidencia(
         uint256 id,
         bytes32 hashArchivo,
@@ -75,7 +187,7 @@ contract BlockEvidenceRegistro is AccessControl {
         address custodioInicial
     )
         external
-        onlyRole(REGISTRADOR_ROLE)
+        onlyRole(PNP_ROLE)
     {
         require(
             totalEvidencias < MAX_EVIDENCIAS,
@@ -117,6 +229,11 @@ contract BlockEvidenceRegistro is AccessControl {
             "Custodio invalido"
         );
 
+        require(
+            custodioInicial == msg.sender,
+            "Custodio inicial debe ser la cuenta PNP"
+        );
+
         evidencias[id] = Evidencia({
             id: id,
             hashArchivo: hashArchivo,
@@ -146,7 +263,6 @@ contract BlockEvidenceRegistro is AccessControl {
         Estado nuevoEstado
     )
         external
-        onlyRole(VALIDADOR_ROLE)
     {
         require(
             id > 0 && id <= MAX_EVIDENCIAS,
@@ -160,9 +276,17 @@ contract BlockEvidenceRegistro is AccessControl {
             "Evidencia inexistente"
         );
 
+        _validarCustodioActual(evidencia);
+
         require(
             evidencia.estado != nuevoEstado,
             "El estado ya es el indicado"
+        );
+
+        _validarRolParaEstado(nuevoEstado);
+        _validarTransicionEstado(
+            evidencia.estado,
+            nuevoEstado
         );
 
         Estado anterior = evidencia.estado;
@@ -183,7 +307,6 @@ contract BlockEvidenceRegistro is AccessControl {
         address nuevoCustodio
     )
         external
-        onlyRole(VALIDADOR_ROLE)
     {
         require(
             id > 0 && id <= MAX_EVIDENCIAS,
@@ -197,6 +320,8 @@ contract BlockEvidenceRegistro is AccessControl {
             "Evidencia inexistente"
         );
 
+        _validarCustodioActual(evidencia);
+
         require(
             nuevoCustodio != address(0),
             "Custodio invalido"
@@ -205,6 +330,11 @@ contract BlockEvidenceRegistro is AccessControl {
         require(
             evidencia.custodioActual != nuevoCustodio,
             "El custodio ya es el indicado"
+        );
+
+        _validarNuevoCustodio(
+            evidencia.estado,
+            nuevoCustodio
         );
 
         address anterior = evidencia.custodioActual;
